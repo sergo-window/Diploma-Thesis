@@ -2,6 +2,8 @@ package ru.skypro.homework.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,7 +11,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import ru.skypro.homework.model.Role;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -24,7 +25,8 @@ public class WebSecurityConfig {
             "/login",
             "/register",
             "/ads",
-            "/ads/{id}"
+            "/ads/{id}",
+            "/error"
     };
 
     @Bean
@@ -34,7 +36,7 @@ public class WebSecurityConfig {
                         .username("user@gmail.com")
                         .password("password123")
                         .passwordEncoder(passwordEncoder::encode)
-                        .roles(Role.USER.name())
+                        .roles("USER")
                         .build();
 
         UserDetails admin =
@@ -42,7 +44,7 @@ public class WebSecurityConfig {
                         .username("admin@gmail.com")
                         .password("admin123")
                         .passwordEncoder(passwordEncoder::encode)
-                        .roles(Role.ADMIN.name())
+                        .roles("ADMIN")
                         .build();
 
         return new InMemoryUserDetailsManager(user, admin);
@@ -57,14 +59,18 @@ public class WebSecurityConfig {
                                 authorization
                                         .mvcMatchers(AUTH_WHITELIST)
                                         .permitAll()
-                                        .mvcMatchers("/ads/**", "/users/**")
-                                        .authenticated()
-                                        .mvcMatchers("/admin/**")
-                                        .hasRole(Role.ADMIN.name()))
+                                        .anyRequest()
+                                        .authenticated())
                 .cors()
                 .and()
                 .httpBasic(withDefaults());
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
