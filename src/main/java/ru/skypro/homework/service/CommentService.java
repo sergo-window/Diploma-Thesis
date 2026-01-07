@@ -1,6 +1,7 @@
 package ru.skypro.homework.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.skypro.homework.dto.Comment;
@@ -23,6 +24,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final AdRepository adRepository;
     private final CommentMapper commentMapper;
+    private final UserService userService;
 
     public Optional<Comments> getCommentsByAdId(Integer adId) {
         Optional<AdEntity> adOpt = adRepository.findById(adId);
@@ -36,8 +38,11 @@ public class CommentService {
     }
 
     @Transactional
-    public Optional<Comment> addComment(Integer adId, CreateOrUpdateComment createComment, UserEntity author) {
+    public Optional<Comment> addComment(Integer adId, CreateOrUpdateComment createComment, String username) {
         Optional<AdEntity> adOpt = adRepository.findById(adId);
+        UserEntity author = userService.getUserEntityByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         if (adOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -51,7 +56,8 @@ public class CommentService {
     }
 
     @Transactional
-    public boolean deleteComment(Integer adId, Integer commentId, UserEntity user) {
+    @PreAuthorize("hasRole('ADMIN') or @commentService.isCommentAuthor(#commentId, authentication.name)")
+    public boolean deleteComment(Integer adId, Integer commentId, String username) {
         Optional<CommentEntity> commentOpt = commentRepository.findByIdWithRelations(commentId);
 
         if (commentOpt.isEmpty()) {
@@ -61,13 +67,6 @@ public class CommentService {
         CommentEntity comment = commentOpt.get();
 
         if (!comment.getAd().getId().equals(adId)) {
-            return false;
-        }
-
-        boolean isAuthor = comment.getAuthor().getId().equals(user.getId());
-        boolean isAdmin = user.getRole().equals(ru.skypro.homework.model.Role.ADMIN);
-
-        if (!isAuthor && !isAdmin) {
             return false;
         }
 
@@ -75,9 +74,16 @@ public class CommentService {
         return true;
     }
 
+    public boolean isCommentAuthor(Integer commentId, String username) {
+        UserEntity user = userService.getUserEntityByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return commentRepository.existsByIdAndAuthor(commentId, user);
+    }
+
     @Transactional
+    @PreAuthorize("@commentService.isCommentAuthor(#commentId, authentication.name)")
     public Optional<Comment> updateComment(Integer adId, Integer commentId,
-                                           CreateOrUpdateComment updateComment, UserEntity user) {
+                                           CreateOrUpdateComment updateComment, String username) {
         Optional<CommentEntity> commentOpt = commentRepository.findByIdWithRelations(commentId);
 
         if (commentOpt.isEmpty()) {
@@ -87,10 +93,6 @@ public class CommentService {
         CommentEntity comment = commentOpt.get();
 
         if (!comment.getAd().getId().equals(adId)) {
-            return Optional.empty();
-        }
-
-        if (!comment.getAuthor().getId().equals(user.getId())) {
             return Optional.empty();
         }
 
@@ -102,9 +104,5 @@ public class CommentService {
     @Transactional
     public void deleteAllCommentsByAd(AdEntity ad) {
         commentRepository.deleteAllByAd(ad);
-    }
-
-    public boolean isCommentAuthor(Integer commentId, UserEntity user) {
-        return commentRepository.existsByIdAndAuthor(commentId, user);
     }
 }

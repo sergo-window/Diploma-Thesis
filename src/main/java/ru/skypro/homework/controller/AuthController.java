@@ -3,6 +3,7 @@ package ru.skypro.homework.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.skypro.homework.dto.Login;
 import ru.skypro.homework.dto.Register;
@@ -13,6 +14,7 @@ import javax.validation.Valid;
 @RestController
 @RequiredArgsConstructor
 @CrossOrigin(value = "http://localhost:3000")
+@Validated
 public class AuthController {
 
     private final AuthService authService;
@@ -28,6 +30,7 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody Register register) {
         boolean success = authService.register(register);
         return success ? ResponseEntity.status(HttpStatus.CREATED).build() :
-                ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("User with this username already exists");
     }
 }

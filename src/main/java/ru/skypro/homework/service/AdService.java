@@ -1,12 +1,10 @@
 package ru.skypro.homework.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.skypro.homework.dto.Ad;
-import ru.skypro.homework.dto.Ads;
-import ru.skypro.homework.dto.CreateOrUpdateAd;
-import ru.skypro.homework.dto.ExtendedAd;
+import ru.skypro.homework.dto.*;
 import ru.skypro.homework.mapper.AdMapper;
 import ru.skypro.homework.model.AdEntity;
 import ru.skypro.homework.model.UserEntity;
@@ -33,13 +31,18 @@ public class AdService {
                 .map(adMapper::toExtendedAdDto);
     }
 
-    public Ads getAdsByAuthor(UserEntity author) {
+    public Ads getAdsByAuthor(String username) {
+        UserEntity author = userService.getUserEntityByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         List<AdEntity> ads = adRepository.findAllByAuthor(author);
         return adMapper.toAdsDto(ads);
     }
 
     @Transactional
-    public Optional<Ad> createAd(CreateOrUpdateAd createAd, String imageUrl, UserEntity author) {
+    public Optional<Ad> createAd(CreateOrUpdateAd createAd, String imageUrl, String username) {
+        UserEntity author = userService.getUserEntityByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         AdEntity adEntity = adMapper.toEntity(createAd);
         adEntity.setAuthor(author);
         adEntity.setImage(imageUrl);
@@ -49,9 +52,10 @@ public class AdService {
     }
 
     @Transactional
-    public Optional<Ad> updateAd(Integer id, CreateOrUpdateAd updateAd, UserEntity user) {
+    @PreAuthorize("hasRole('ADMIN') or @adService.isAdAuthor(#id, authentication.name)")
+    public Optional<Ad> updateAd(Integer id, CreateOrUpdateAd updateAd, String username) {
         return adRepository.findById(id)
-                .filter(ad -> ad.getAuthor().getId().equals(user.getId()))
+                .filter(ad -> isAdAuthor(id, username))
                 .map(ad -> {
                     adMapper.updateEntityFromDto(updateAd, ad);
                     AdEntity saved = adRepository.save(ad);
@@ -59,10 +63,17 @@ public class AdService {
                 });
     }
 
+    public boolean isAdAuthor(Integer adId, String username) {
+        UserEntity user = userService.getUserEntityByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return adRepository.existsByIdAndAuthor(adId, user);
+    }
+
     @Transactional
-    public boolean updateAdImage(Integer id, String imageUrl, UserEntity user) {
+    @PreAuthorize("hasRole('ADMIN') or @adService.isAdAuthor(#id, authentication.name)")
+    public boolean updateAdImage(Integer id, String imageUrl, String username) {
         Optional<AdEntity> adOpt = adRepository.findById(id)
-                .filter(ad -> ad.getAuthor().getId().equals(user.getId()));
+                .filter(ad -> isAdAuthor(id, username));
 
         if (adOpt.isEmpty()) {
             return false;
@@ -75,7 +86,8 @@ public class AdService {
     }
 
     @Transactional
-    public boolean deleteAd(Integer id, UserEntity user) {
+    @PreAuthorize("hasRole('ADMIN') or @adService.isAdAuthor(#id, authentication.name)")
+    public boolean deleteAd(Integer id, String username) {
         Optional<AdEntity> adOpt = adRepository.findById(id);
 
         if (adOpt.isEmpty()) {
@@ -84,8 +96,7 @@ public class AdService {
 
         AdEntity ad = adOpt.get();
 
-        if (!ad.getAuthor().getId().equals(user.getId()) &&
-                !user.getRole().equals(ru.skypro.homework.model.Role.ADMIN)) {
+        if (!isAdAuthor(id, username) && !userIsAdmin(username)) {
             return false;
         }
 
@@ -93,7 +104,9 @@ public class AdService {
         return true;
     }
 
-    public boolean isAdAuthor(Integer adId, UserEntity user) {
-        return adRepository.existsByIdAndAuthor(adId, user);
+    private boolean userIsAdmin(String username) {
+        return userService.getUserEntityByUsername(username)
+                .map(user -> user.getRole().name().equals("ADMIN"))
+                .orElse(false);
     }
 }

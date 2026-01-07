@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-constraints
+      author: your_name
+      changes:
+        # Добавляем проверки для цены
+        - addCheckConstraint:
+            tableName: ads
+            constraintName: ck_ads_price_positive
+            constraintBody: price >= 0
+
+        # Добавляем проверки для длины полей
+        - addCheckConstraint:
+            tableName: users
+            constraintName: ck_users_username_length
+            constraintBody: "LENGTH(username) >= 4 AND LENGTH(username) <= 32"
+
+        - addCheckConstraint:
+            tableName: ads
+            constraintName: ck_ads_title_length
+            constraintBody: "LENGTH(title) >= 4 AND LENGTH(title) <= 32"
+
+        - addCheckConstraint:
+            tableName: ads
+            constraintName: ck_ads_description_length
+            constraintBody: "LENGTH(description) >= 8 AND LENGTH(description) <= 64"

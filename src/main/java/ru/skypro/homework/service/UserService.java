@@ -1,6 +1,7 @@
 package ru.skypro.homework.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -10,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.skypro.homework.dto.NewPassword;
 import ru.skypro.homework.dto.UpdateUser;
 import ru.skypro.homework.dto.User;
-import ru.skypro.homework.mapper.UserMapper;
 import ru.skypro.homework.model.UserEntity;
 import ru.skypro.homework.repository.UserRepository;
 
+import java.util.Collections;
 import java.util.Optional;
 
 @Service
@@ -22,27 +23,43 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapper userMapper;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return (UserDetails) userRepository.findActiveByUsername(username)
+        UserEntity userEntity = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        return new org.springframework.security.core.userdetails.User(
+                userEntity.getUsername(),
+                userEntity.getPassword(),
+                userEntity.isEnabled(),
+                true,
+                true,
+                true,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + userEntity.getRole().name()))
+        );
+    }
+
+    public Optional<UserEntity> getUserEntityByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    public User getCurrentUser(String username) {
+        return userRepository.findByUsername(username)
+                .map(this::toUserDto)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-    public Optional<User> getUserById(Integer id) {
-        return userRepository.findById(id)
-                .map(userMapper::toUserDto);
-    }
-
-    public Optional<User> getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .map(userMapper::toUserDto);
-    }
-
-    public User getCurrentUser(UserDetails userDetails) {
-        UserEntity userEntity = (UserEntity) userDetails;
-        return userMapper.toUserDto(userEntity);
+    private User toUserDto(UserEntity entity) {
+        User user = new User();
+        user.setId(entity.getId());
+        user.setEmail(entity.getUsername());
+        user.setFirstName(entity.getFirstName());
+        user.setLastName(entity.getLastName());
+        user.setPhone(entity.getPhone());
+        user.setRole(entity.getRole());
+        user.setImage(entity.getImage());
+        return user;
     }
 
     @Transactional
@@ -67,9 +84,17 @@ public class UserService implements UserDetailsService {
     public Optional<User> updateUser(String username, UpdateUser updateUser) {
         return userRepository.findByUsername(username)
                 .map(user -> {
-                    userMapper.updateEntityFromDto(updateUser, user);
+                    if (updateUser.getFirstName() != null) {
+                        user.setFirstName(updateUser.getFirstName());
+                    }
+                    if (updateUser.getLastName() != null) {
+                        user.setLastName(updateUser.getLastName());
+                    }
+                    if (updateUser.getPhone() != null) {
+                        user.setPhone(updateUser.getPhone());
+                    }
                     UserEntity saved = userRepository.save(user);
-                    return userMapper.toUserDto(saved);
+                    return toUserDto(saved);
                 });
     }
 
@@ -79,7 +104,7 @@ public class UserService implements UserDetailsService {
                 .map(user -> {
                     user.setImage(imageUrl);
                     UserEntity saved = userRepository.save(user);
-                    return userMapper.toUserDto(saved);
+                    return toUserDto(saved);
                 });
     }
 
@@ -88,9 +113,17 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public User createUser(UserEntity userEntity) {
-        userEntity.setPassword(passwordEncoder.encode(userEntity.getPassword()));
+    public User createUser(ru.skypro.homework.dto.Register register) {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername(register.getUsername());
+        userEntity.setPassword(passwordEncoder.encode(register.getPassword()));
+        userEntity.setFirstName(register.getFirstName());
+        userEntity.setLastName(register.getLastName());
+        userEntity.setPhone(register.getPhone());
+        userEntity.setRole(register.getRole());
+        userEntity.setEnabled(true);
+
         UserEntity saved = userRepository.save(userEntity);
-        return userMapper.toUserDto(saved);
+        return toUserDto(saved);
     }
 }

@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-insert-initial-data
+      author: your_name
+      changes:
+        # Добавляем тестовых пользователей
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: user@gmail.com
+              - column:
+                  name: password
+                  value: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVYc7e
+              - column:
+                  name: first_name
+                  value: Иван
+              - column:
+                  name: last_name
+                  value: Иванов
+              - column:
+                  name: phone
+                  value: '+7 (911) 123-45-67'
+              - column:
+                  name: role
+                  value: USER
+
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: admin@gmail.com
+              - column:
+                  name: password
+                  value: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVYc7e
+              - column:
+                  name: first_name
+                  value: Админ
+              - column:
+                  name: last_name
+                  value: Админов
+              - column:
+                  name: phone
+                  value: '+7 (912) 987-65-43'
+              - column:
+                  name: role
+                  value: ADMIN
+
+        # Тестовые объявления
+        - insert:
+            tableName: ads
+            columns:
+              - column:
+                  name: title
+                  value: Продам автомобиль
+              - column:
+                  name: price
+                  valueNumeric: 1000000
+              - column:
+                  name: description
+                  value: Отличное состояние, пробег 50000 км
+              - column:
+                  name: author_id
+                  valueNumeric: 1
+
+        - insert:
+            tableName: ads
+            columns:
+              - column:
+                  name: title
+                  value: Сниму квартиру
+              - column:
+                  name: price
+                  valueNumeric: 30000
+              - column:
+                  name: description
+                  value: Ищу 2-х комнатную квартиру в центре
+              - column:
+                  name: author_id
+                  valueNumeric: 2
+
+        # Тестовые комментарии
+        - insert:
+            tableName: comments
+            columns:
+              - column:
+                  name: text
+                  value: Интересное предложение, можно ли посмотреть?
+              - column:
+                  name: author_id
+                  valueNumeric: 2
+              - column:
+                  name: ad_id
+                  valueNumeric: 1
+
+        - insert:
+            tableName: comments
+            columns:
+              - column:
+                  name: text
+                  value: Да, конечно. Когда вам удобно?
+              - column:
+                  name: author_id
+                  valueNumeric: 1
+              - column:
+                  name: ad_id
+                  valueNumeric: 1

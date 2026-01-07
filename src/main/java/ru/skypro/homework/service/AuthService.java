@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.skypro.homework.dto.Login;
 import ru.skypro.homework.dto.Register;
-import ru.skypro.homework.mapper.UserMapper;
 import ru.skypro.homework.model.Role;
 import ru.skypro.homework.model.UserEntity;
 import ru.skypro.homework.repository.UserRepository;
@@ -22,7 +21,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapper userMapper;
+    private final UserService userService;
 
     public boolean login(Login login) {
         try {
@@ -42,7 +41,7 @@ public class AuthService {
 
     @Transactional
     public boolean register(Register register) {
-        if (userRepository.existsByUsername(register.getUsername())) {
+        if (userService.userExists(register.getUsername())) {
             return false;
         }
 

@@ -4,42 +4,44 @@ import lombok.Data;
 import lombok.ToString;
 
 import javax.persistence.*;
-import javax.validation.constraints.*;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Data
 @Table(name = "users")
+@Data
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(unique = true, nullable = false)
-    @Size(min = 4, max = 32)
+    @Column(name = "username", nullable = false, unique = true, length = 32)
     private String username;
 
-    @Column(nullable = false)
-    @Size(min = 8, max = 16)
+    @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "first_name", nullable = false)
-    @Size(min = 2, max = 16)
+    @Column(name = "first_name", nullable = false, length = 16)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false)
-    @Size(min = 2, max = 16)
+    @Column(name = "last_name", nullable = false, length = 16)
     private String lastName;
 
-    @Pattern(regexp = "\\+7\\s?\\(?\\d{3}\\)?\\s?\\d{3}-?\\d{2}-?\\d{2}")
+    @Column(name = "phone", length = 20)
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false, length = 10)
     private Role role = Role.USER;
 
     @Column(name = "image_url")
     private String image;
+
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
@@ -48,7 +50,4 @@ public class UserEntity {
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     private List<CommentEntity> comments;
-
-    @Column(nullable = false)
-    private boolean enabled = true;
 }
