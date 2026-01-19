@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ru.skypro.homework.dto.*;
 import ru.skypro.homework.mapper.AdMapper;
 import ru.skypro.homework.model.AdEntity;
 import ru.skypro.homework.model.UserEntity;
 import ru.skypro.homework.repository.AdRepository;
+import ru.skypro.homework.repository.UserRepository;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,8 +21,10 @@ import java.util.Optional;
 public class AdService {
 
     private final AdRepository adRepository;
+    private final UserRepository userRepository;
     private final AdMapper adMapper;
     private final UserService userService;
+    private final ImageService imageService;
 
     public Ads getAllAds() {
         List<AdEntity> ads = adRepository.findAllWithAuthor();
@@ -36,6 +41,50 @@ public class AdService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         List<AdEntity> ads = adRepository.findAllByAuthor(author);
         return adMapper.toAdsDto(ads);
+    }
+
+    @Transactional
+    public Ad addAd(CreateOrUpdateAd createOrUpdateAd, MultipartFile image, String username) throws IOException {
+        UserEntity author = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        AdEntity adEntity = adMapper.toEntity(createOrUpdateAd);
+        adEntity.setAuthor(author);
+
+        if (image != null && !image.isEmpty()) {
+            String imageFilename = imageService.saveImage(image);
+            adEntity.setImagePath(imageFilename);
+        }
+
+        AdEntity savedEntity = adRepository.save(adEntity);
+        return adMapper.toDto(savedEntity);
+    }
+
+    @Transactional
+    public String updateAdImage(Integer adId, MultipartFile image) throws IOException {
+        AdEntity adEntity = adRepository.findById(adId)
+                .orElseThrow(() -> new RuntimeException("Ad not found"));
+
+        if (adEntity.getImagePath() != null) {
+            try {
+                imageService.deleteImage(adEntity.getImagePath());
+            } catch (IOException e) {
+                System.err.println("Failed to delete old image: " + e.getMessage());
+            }
+        }
+
+        String newImageFilename = imageService.saveImage(image);
+        adEntity.setImagePath(newImageFilename);
+        adRepository.save(adEntity);
+
+        return imageService.getImageUrl(newImageFilename);
+    }
+
+    public ExtendedAd getExtendedAd(Integer id) {
+        AdEntity adEntity = adRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ad not found"));
+
+        return adMapper.toExtendedAdDto(adEntity);
     }
 
     @Transactional

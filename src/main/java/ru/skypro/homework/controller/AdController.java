@@ -2,14 +2,18 @@ package ru.skypro.homework.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.skypro.homework.dto.*;
 
 import javax.validation.Valid;
+import java.io.IOException;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,25 +30,15 @@ public class AdController {
         return ResponseEntity.ok(ads);
     }
 
-    @PostMapping
-    public ResponseEntity<Ad> addAd(
-            @RequestParam("properties") @Valid CreateOrUpdateAd properties,
-            @RequestParam("image") MultipartFile image,
-            Authentication authentication) {
-
-        String username = authentication.getName();
-
-        if (image.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Ad> addAd(@AuthenticationPrincipal UserDetails userDetails,
+                                    @RequestPart("properties") CreateOrUpdateAd properties,
+                                    @RequestPart("image") MultipartFile image) {
         try {
-            String imageUrl = "/ads/images/" + image.getOriginalFilename(); // Пример
-            return adService.createAd(properties, imageUrl, username)
-                    .map(ad -> ResponseEntity.status(HttpStatus.CREATED).body(ad))
-                    .orElse(ResponseEntity.badRequest().build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            Ad ad = adService.addAd(properties, image, userDetails.getUsername());
+            return ResponseEntity.status(HttpStatus.CREATED).body(ad);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -83,25 +77,14 @@ public class AdController {
         return ResponseEntity.ok(ads);
     }
 
-    @PatchMapping("/{id}/image")
-    public ResponseEntity<byte[]> updateImage(
-            @PathVariable("id") Integer id,
-            @RequestParam("image") MultipartFile image,
-            Authentication authentication) {
-
-        String username = authentication.getName();
-
-        if (image.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    @PatchMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> updateAdImage(@PathVariable Integer id,
+                                                @RequestParam("image") MultipartFile image) {
         try {
-            String imageUrl = "/ads/images/" + image.getOriginalFilename(); // Пример
-            boolean updated = adService.updateAdImage(id, imageUrl, username);
-            return updated ? ResponseEntity.ok(new byte[0]) :
-                    ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            String imageUrl = adService.updateAdImage(id, image);
+            return ResponseEntity.ok(imageUrl);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

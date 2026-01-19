@@ -1,4 +1,18 @@
-FROM adoptopenjdk:11-jre-hotspot
-ARG JAR_FILE=target/*.jar
-COPY ${JAR_FILE} app.jar
-ENTRYPOINT ["java","-jar","/app.jar"]
+FROM amazoncorretto:17-alpine AS build
+
+RUN apk add --no-cache maven
+WORKDIR /app
+
+COPY pom.xml .
+COPY src ./src
+
+RUN mvn clean package -DskipTests
+
+FROM amazoncorretto:17-alpine
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

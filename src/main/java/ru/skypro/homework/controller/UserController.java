@@ -2,8 +2,11 @@ package ru.skypro.homework.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +16,7 @@ import ru.skypro.homework.dto.User;
 import ru.skypro.homework.service.UserService;
 
 import javax.validation.Valid;
+import java.io.IOException;
 
 @RestController
 @RequiredArgsConstructor
@@ -50,25 +54,14 @@ public class UserController {
                 .orElse(ResponseEntity.badRequest().build());
     }
 
-    @PatchMapping("/me/image")
-    public ResponseEntity<?> updateUserImage(@RequestParam("image") MultipartFile image,
-                                             Authentication authentication) {
-        String username = authentication.getName();
-
-        if (image.isEmpty()) {
-            return ResponseEntity.badRequest().body("Image is required");
-        }
-        if (!image.getContentType().startsWith("image/")) {
-            return ResponseEntity.badRequest().body("File must be an image");
-        }
-
+    @PatchMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<User> updateUserImage(@AuthenticationPrincipal UserDetails userDetails,
+                                                @RequestParam("image") MultipartFile image) {
         try {
-            String imageUrl = "/images/" + image.getOriginalFilename(); // Пример
-            return userService.updateUserImage(username, imageUrl)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.badRequest().build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error uploading image");
+            User updatedUser = userService.updateUserImage(userDetails.getUsername(), image);
+            return ResponseEntity.ok(updatedUser);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

@@ -8,16 +8,12 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import ru.skypro.homework.filter.BasicAuthCorsFilter;
 
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -38,7 +34,6 @@ public class WebSecurityConfig implements WebMvcConfigurer {
             "/error"
     };
 
-    private final BasicAuthCorsFilter basicAuthCorsFilter;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -51,24 +46,25 @@ public class WebSecurityConfig implements WebMvcConfigurer {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf()
-                .disable()
-                .authorizeHttpRequests(
-                        authorization ->
-                                authorization
-                                        .mvcMatchers(AUTH_WHITELIST)
-                                        .permitAll()
-                                        .mvcMatchers("/ads/**", "/users/**")
-                                        .authenticated()
-                                        .mvcMatchers("/admin/**")
-                                        .hasRole("ADMIN"))
-                .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .cors()
-                .and()
-                .httpBasic(withDefaults())
-                .addFilterBefore(basicAuthCorsFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+                .csrf().disable()
+                .cors().and()
+                .authorizeHttpRequests(auth -> auth
+                        .antMatchers(
+                                "/ads/**",
+                                "/users/**",
+                                "/login",
+                                "/register"
+                        ).permitAll()
+                        .antMatchers(
+                                "/images/**",
+                                "/swagger-ui/**",
+                                "/swagger-resources/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .httpBasic();
 
         return http.build();
     }
