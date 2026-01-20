@@ -63,7 +63,7 @@ public class UserService implements UserDetailsService {
         user.setLastName(entity.getLastName());
         user.setPhone(entity.getPhone());
         user.setRole(entity.getRole());
-        user.setImage(entity.getImage());
+        user.setImage("/images/" + entity.getImagePath());
         return user;
     }
 
