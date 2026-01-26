@@ -43,7 +43,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./uploads:/app/uploads  # Для сохранения изображений
+      - ./uploads:/app/uploads
     restart: unless-stopped
 
   frontend:
@@ -54,7 +54,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      REACT_APP_API_URL: http://backend:8080  # Важно: используем имя сервиса, не localhost!
+      REACT_APP_API_URL: http://backend:8080
     depends_on:
       - backend
     restart: unless-stopped
