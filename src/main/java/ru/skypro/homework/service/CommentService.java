@@ -1,6 +1,7 @@
 package ru.skypro.homework.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,18 +14,22 @@ import ru.skypro.homework.model.CommentEntity;
 import ru.skypro.homework.model.UserEntity;
 import ru.skypro.homework.repository.AdRepository;
 import ru.skypro.homework.repository.CommentRepository;
+import ru.skypro.homework.repository.UserRepository;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CommentService {
 
     private final CommentRepository commentRepository;
     private final AdRepository adRepository;
     private final CommentMapper commentMapper;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     public Optional<Comments> getCommentsByAdId(Integer adId) {
         Optional<AdEntity> adOpt = adRepository.findById(adId);
@@ -38,21 +43,24 @@ public class CommentService {
     }
 
     @Transactional
-    public Optional<Comment> addComment(Integer adId, CreateOrUpdateComment createComment, String username) {
-        Optional<AdEntity> adOpt = adRepository.findById(adId);
-        UserEntity author = userService.getUserEntityByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public Comment addComment(Integer adId, CreateOrUpdateComment commentDto, String username) {
+        log.info("Adding comment to ad {} by user {}", adId, username);
 
-        if (adOpt.isEmpty()) {
-            return Optional.empty();
-        }
+        AdEntity ad = adRepository.findById(adId)
+                .orElseThrow(() -> new EntityNotFoundException("Ad not found with id: " + adId));
 
-        CommentEntity commentEntity = commentMapper.toEntity(createComment);
-        commentEntity.setAd(adOpt.get());
+        UserEntity author = (UserEntity) userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+
+        CommentEntity commentEntity = commentMapper.toEntity(commentDto);
+        commentEntity.setAd(ad);
         commentEntity.setAuthor(author);
 
-        CommentEntity saved = commentRepository.save(commentEntity);
-        return Optional.of(commentMapper.toDto(saved));
+        CommentEntity savedEntity = commentRepository.save(commentEntity);
+        log.info("Comment saved with id: {}, createdAt: {}",
+                savedEntity.getId(), savedEntity.getCreatedAt());
+
+        return commentMapper.toDto(savedEntity);
     }
 
     @Transactional

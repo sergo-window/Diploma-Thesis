@@ -22,8 +22,7 @@ public interface CommentMapper {
 
     default String getAuthorImageUrl(CommentEntity entity) {
         if (entity == null || entity.getAuthor() == null ||
-                entity.getAuthor().getImagePath() == null ||
-                entity.getAuthor().getImagePath().isEmpty()) {
+                entity.getAuthor().getImagePath() == null) {
             return "";
         }
         return "/images/" + entity.getAuthor().getImagePath();
@@ -31,11 +30,10 @@ public interface CommentMapper {
 
     default Long getCreatedAtMillis(CommentEntity entity) {
         if (entity == null || entity.getCreatedAt() == null) {
-            return 0L;
+            return System.currentTimeMillis();
         }
-
         return entity.getCreatedAt()
-                .atZone(ZoneId.systemDefault())
+                .atZone(java.time.ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli();
     }
