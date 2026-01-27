@@ -1,34 +1,35 @@
 package ru.skypro.homework.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.ToString;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
-import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Entity
-@Data
 @Table(name = "comments")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CommentEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
-    @Size(min = 8, max = 64)
     private String text;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
-    @ToString.Exclude
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @ManyToOne
+    @JoinColumn(name = "author_id")
     private UserEntity author;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ad_id", nullable = false)
-    @ToString.Exclude
+    @ManyToOne
+    @JoinColumn(name = "ad_id")
     private AdEntity ad;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
 }
